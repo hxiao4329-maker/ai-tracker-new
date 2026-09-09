@@ -6,6 +6,7 @@ AI 产品动态自动抓取脚本
 
 import os
 import json
+import random
 import re
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict
@@ -48,6 +49,7 @@ def init_products():
             "description": "OpenAI 推出的对话式 AI 助手，支持文本、代码、图像等多种任务。",
             "website_url": "https://chatgpt.com",
             "icon_url": "",
+            "icon": "💬",
             "color": "#10A37F"
         },
         {
@@ -57,6 +59,7 @@ def init_products():
             "description": "字节跳动推出的 AI 助手，覆盖对话、写作、学习、工作等场景。",
             "website_url": "https://www.doubao.com",
             "icon_url": "",
+            "icon": "🥟",
             "color": "#3A7DFF"
         },
         {
@@ -66,6 +69,7 @@ def init_products():
             "description": "Google DeepMind 开发的多模态 AI 模型，集成搜索与生产力工具。",
             "website_url": "https://gemini.google.com",
             "icon_url": "",
+            "icon": "♊",
             "color": "#4285F4"
         },
         {
@@ -75,6 +79,7 @@ def init_products():
             "description": "Anthropic 开发的 AI 助手，以安全、长上下文和推理能力著称。",
             "website_url": "https://claude.ai",
             "icon_url": "",
+            "icon": "🧠",
             "color": "#CC785C"
         },
         {
@@ -84,6 +89,7 @@ def init_products():
             "description": "xAI 开发的 AI 助手，强调实时信息、幽默风格和批判性思维。",
             "website_url": "https://grok.x.ai",
             "icon_url": "",
+            "icon": "🚀",
             "color": "#000000"
         }
     ]
@@ -160,12 +166,71 @@ def parse_date(date_str: str) -> Optional[datetime]:
         "%Y-%m-%d",
         "%B %d, %Y",
         "%b %d, %Y",
+        "%b %d, %Y · %I:%M %p %Z",
     ]
     for fmt in formats:
         try:
             return datetime.strptime(date_str.strip(), fmt)
         except ValueError:
             continue
+    return None
+
+
+def extract_article_date(soup: BeautifulSoup, url: str) -> Optional[datetime]:
+    """从文章页面提取真实发布日期"""
+    if not soup:
+        return None
+    
+    # 1. 尝试 meta 标签
+    for meta_name in ["article:published_time", "published_time", "datePublished", "og:article:published_time"]:
+        meta = soup.find("meta", property=meta_name) or soup.find("meta", attrs={"name": meta_name})
+        if meta and meta.get("content"):
+            date = parse_date(meta["content"])
+            if date:
+                return date
+    
+    # 2. 尝试 JSON-LD
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = json.loads(script.string or "{}")
+            if isinstance(data, dict):
+                date_str = data.get("datePublished") or data.get("dateCreated")
+                if date_str:
+                    date = parse_date(date_str)
+                    if date:
+                        return date
+            elif isinstance(data, list):
+                for item in data:
+                    if isinstance(item, dict):
+                        date_str = item.get("datePublished") or item.get("dateCreated")
+                        if date_str:
+                            date = parse_date(date_str)
+                            if date:
+                                return date
+        except Exception:
+            pass
+    
+    # 3. 尝试时间元素
+    time_el = soup.find("time")
+    if time_el and time_el.get_text(strip=True):
+        date = parse_date(time_el.get_text(strip=True))
+        if date:
+            return date
+        datetime_attr = time_el.get("datetime")
+        if datetime_attr:
+            date = parse_date(datetime_attr)
+            if date:
+                return date
+    
+    # 4. Anthropic 特殊处理
+    for text in soup.stripped_strings:
+        # 匹配 "Jul 27, 2026" 格式
+        match = re.search(r'([A-Za-z]{3}\s+\d{1,2},\s+\d{4})', text)
+        if match:
+            date = parse_date(match.group(1))
+            if date:
+                return date
+    
     return None
 
 
@@ -210,6 +275,24 @@ def clean_anthropic_title(title: str) -> str:
     return title
 
 
+def extract_anthropic_date(link) -> Optional[datetime]:
+    """从 Anthropic 链接的父元素中提取日期"""
+    try:
+        parent = link.find_parent()
+        for _ in range(5):
+            if not parent:
+                break
+            text = parent.get_text(" ", strip=True)
+            # 匹配日期格式如 "Jul 27, 2026"
+            match = re.search(r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},\s+\d{4}', text)
+            if match:
+                return parse_date(match.group(0))
+            parent = parent.find_parent()
+    except Exception:
+        pass
+    return None
+
+
 def fetch_anthropic_updates(product: Dict):
     """抓取 Anthropic / Claude 更新"""
     print(f"Fetching Anthropic updates...")
@@ -232,9 +315,12 @@ def fetch_anthropic_updates(product: Dict):
             if not title or len(title) < 5:
                 continue
             
+            # 提取真实发布日期
+            published_at = extract_anthropic_date(link) or datetime.now(timezone.utc)
+            
             url = urljoin("https://www.anthropic.com", href)
             save_update(product["id"], product["slug"], product["name"], product["color"],
-                       title, None, url, "blog", datetime.now(timezone.utc))
+                       title, None, url, "blog", published_at)
 
 
 def fetch_google_updates(product: Dict):
@@ -369,37 +455,50 @@ def generate_historical_data():
         ]
     }
     
-    current_date = start_date
     update_id = 1
     updates = []
     
-    while current_date <= end_date:
-        for product in products:
-            # 每个产品每月生成 2-3 条数据
-            if current_date.day in [5, 15, 25]:
-                titles = sample_titles.get(product["slug"], [])
-                if titles:
-                    title = titles[(current_date.month + current_date.day) % len(titles)]
-                    
-                    update = {
-                        "id": update_id,
-                        "product_id": product["id"],
-                        "product_slug": product["slug"],
-                        "product_name": product["name"],
-                        "product_color": product["color"],
-                        "title": title,
-                        "summary": f"{product['name']} 在 {current_date.strftime('%Y年%m月%d日')} 的重要更新...",
-                        "content": None,
-                        "source_url": product["website_url"],
-                        "source_type": "blog",
-                        "published_at": current_date.isoformat(),
-                        "fetched_at": datetime.now(timezone.utc).isoformat(),
-                        "is_new": False
-                    }
-                    updates.append(update)
-                    update_id += 1
+    # 为每个产品生成历史数据
+    for product in products:
+        titles = sample_titles.get(product["slug"], [])
+        if not titles:
+            continue
         
-        current_date += timedelta(days=1)
+        # 生成 15-25 条历史数据，时间从 2025-01-01 到现在随机分布
+        num_updates = random.randint(15, 25)
+        total_days = (end_date - start_date).days
+        
+        for i in range(num_updates):
+            # 随机选择日期
+            random_days = random.randint(0, total_days)
+            published_date = start_date + timedelta(days=random_days)
+            
+            # 随机时间
+            published_date = published_date.replace(
+                hour=random.randint(8, 22),
+                minute=random.randint(0, 59),
+                second=random.randint(0, 59)
+            )
+            
+            title = titles[i % len(titles)]
+            
+            update = {
+                "id": update_id,
+                "product_id": product["id"],
+                "product_slug": product["slug"],
+                "product_name": product["name"],
+                "product_color": product["color"],
+                "title": title,
+                "summary": f"{product['name']} 的重要更新，发布于 {published_date.strftime('%Y年%m月%d日')}。",
+                "content": None,
+                "source_url": product["website_url"],
+                "source_type": "blog",
+                "published_at": published_date.isoformat(),
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+                "is_new": False
+            }
+            updates.append(update)
+            update_id += 1
     
     save_json(UPDATES_FILE, updates)
     print(f"Generated {len(updates)} historical updates")
@@ -408,8 +507,11 @@ def generate_historical_data():
 def mark_old_updates():
     """将之前标记为新的更新改为旧更新"""
     updates = load_json(UPDATES_FILE)
+    today = datetime.now(timezone.utc).date().isoformat()
     for update in updates:
-        update["is_new"] = False
+        fetched_date = update.get("fetched_at", "")[:10]
+        # 只有今天抓取的才标记为最新
+        update["is_new"] = fetched_date == today
     save_json(UPDATES_FILE, updates)
 
 

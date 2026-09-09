@@ -7,6 +7,7 @@ interface Product {
   description: string;
   website_url: string;
   icon_url: string;
+  icon: string;
   color: string;
   update_count: number;
   last_updated: string | null;
@@ -24,21 +25,25 @@ export default function ProductCard({ product }: ProductCardProps) {
     >
       <div className="flex items-start justify-between mb-4">
         <div
-          className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
-          style={{ backgroundColor: product.color || '#64748b' }}
+          className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-md"
+          style={{ backgroundColor: `${product.color}15`, color: product.color }}
         >
-          {product.name.charAt(0)}
+          {product.icon || product.name.charAt(0)}
         </div>
-        <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
+        <span
+          className="text-xs font-semibold px-3 py-1 rounded-full"
+          style={{ backgroundColor: `${product.color}12`, color: product.color }}
+        >
           {product.update_count} 条动态
         </span>
       </div>
-      <h3 className="text-lg font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
+      <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
         {product.name}
       </h3>
-      <p className="mt-2 text-sm text-slate-600 line-clamp-2">{product.description}</p>
+      <p className="mt-2 text-sm text-slate-600 line-clamp-2 leading-relaxed">{product.description}</p>
       {product.last_updated && (
-        <p className="mt-4 text-xs text-slate-400">
+        <p className="mt-4 text-xs text-slate-400 flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
           最新更新：{new Date(product.last_updated).toLocaleDateString('zh-CN')}
         </p>
       )}

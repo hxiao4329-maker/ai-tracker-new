@@ -12,6 +12,7 @@ export interface Product {
   description: string;
   website_url: string;
   icon_url: string;
+  icon: string;
   color: string;
 }
 
