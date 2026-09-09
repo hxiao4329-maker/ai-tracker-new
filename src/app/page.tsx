@@ -19,13 +19,13 @@ export default function Home() {
   }));
 
   const totalUpdates = allUpdates.length;
-  const todayUpdates = updates.filter(u => {
+  const todayUpdates = allUpdates.filter(u => {
     const d = new Date(u.published_at || u.fetched_at);
     const today = new Date();
     return d.toDateString() === today.toDateString();
   }).length;
   const newProducts = products.length;
-  const newThisWeek = updates.filter(u => {
+  const newThisWeek = allUpdates.filter(u => {
     const d = new Date(u.published_at || u.fetched_at);
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     return d >= weekAgo;
