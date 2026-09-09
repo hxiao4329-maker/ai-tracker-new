@@ -169,6 +169,15 @@ def parse_date(date_str: str) -> Optional[datetime]:
     return None
 
 
+def clean_title(title: str) -> str:
+    """通用标题清理"""
+    # 移除多余空白
+    title = re.sub(r'\s+', ' ', title).strip()
+    # 移除常见的前缀标记
+    title = re.sub(r'^(New\s+|Update:\s*|Blog:\s*|News:\s*)', '', title, flags=re.IGNORECASE)
+    return title
+
+
 def fetch_openai_updates(product: Dict):
     """抓取 OpenAI 博客和更新"""
     print(f"Fetching OpenAI updates...")
@@ -186,9 +195,19 @@ def fetch_openai_updates(product: Dict):
             title = article.get_text(strip=True)
             if not title or len(title) < 10:
                 continue
+            title = clean_title(title)
             url = urljoin("https://openai.com", href)
             save_update(product["id"], product["slug"], product["name"], product["color"],
                        title, None, url, "blog", datetime.now(timezone.utc))
+
+
+def clean_anthropic_title(title: str) -> str:
+    """清理 Anthropic 标题中的日期和分类前缀"""
+    # 移除日期前缀，如 "Jul 27, 2026"
+    title = re.sub(r'^[A-Za-z]{3}\s+\d{1,2},\s+\d{4}', '', title).strip()
+    # 移除分类前缀，如 "Announcements", "Product", "Research"
+    title = re.sub(r'^(Announcements|Product|Research|Company|Policy|Engineering|Safety)\s*', '', title, flags=re.IGNORECASE).strip()
+    return title
 
 
 def fetch_anthropic_updates(product: Dict):
@@ -207,6 +226,12 @@ def fetch_anthropic_updates(product: Dict):
             title = link.get_text(strip=True)
             if not title or len(title) < 10:
                 continue
+            
+            # 清理标题
+            title = clean_anthropic_title(title)
+            if not title or len(title) < 5:
+                continue
+            
             url = urljoin("https://www.anthropic.com", href)
             save_update(product["id"], product["slug"], product["name"], product["color"],
                        title, None, url, "blog", datetime.now(timezone.utc))
