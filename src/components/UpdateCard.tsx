@@ -7,10 +7,10 @@ interface Update {
   source_type: string;
   published_at: string | null;
   fetched_at: string;
-  is_new: number;
+  is_new: boolean;
   product_slug: string;
   product_name: string;
-  color: string;
+  product_color: string;
 }
 
 interface UpdateCardProps {
@@ -29,12 +29,12 @@ export default function UpdateCard({ update, showProduct = false }: UpdateCardPr
             {showProduct && (
               <span
                 className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white"
-                style={{ backgroundColor: update.color || '#64748b' }}
+                style={{ backgroundColor: update.product_color || '#64748b' }}
               >
                 {update.product_name}
               </span>
             )}
-            {update.is_new === 1 && (
+            {update.is_new && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-600">
                 最新
               </span>
