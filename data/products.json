@@ -1,0 +1,47 @@
+[
+  {
+    "id": 1,
+    "slug": "chatgpt",
+    "name": "ChatGPT",
+    "description": "OpenAI 推出的对话式 AI 助手，支持文本、代码、图像等多种任务。",
+    "website_url": "https://chatgpt.com",
+    "icon_url": "",
+    "color": "#10A37F"
+  },
+  {
+    "id": 2,
+    "slug": "doubao",
+    "name": "豆包",
+    "description": "字节跳动推出的 AI 助手，覆盖对话、写作、学习、工作等场景。",
+    "website_url": "https://www.doubao.com",
+    "icon_url": "",
+    "color": "#3A7DFF"
+  },
+  {
+    "id": 3,
+    "slug": "gemini",
+    "name": "Gemini",
+    "description": "Google DeepMind 开发的多模态 AI 模型，集成搜索与生产力工具。",
+    "website_url": "https://gemini.google.com",
+    "icon_url": "",
+    "color": "#4285F4"
+  },
+  {
+    "id": 4,
+    "slug": "claude",
+    "name": "Claude",
+    "description": "Anthropic 开发的 AI 助手，以安全、长上下文和推理能力著称。",
+    "website_url": "https://claude.ai",
+    "icon_url": "",
+    "color": "#CC785C"
+  },
+  {
+    "id": 5,
+    "slug": "grok",
+    "name": "Grok",
+    "description": "xAI 开发的 AI 助手，强调实时信息、幽默风格和批判性思维。",
+    "website_url": "https://grok.x.ai",
+    "icon_url": "",
+    "color": "#000000"
+  }
+]

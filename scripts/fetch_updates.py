@@ -5,125 +5,137 @@ AI 产品动态自动抓取脚本
 """
 
 import os
+import json
 import re
-import sqlite3
-import hashlib
-from datetime import datetime, timezone
-from typing import Optional
-from urllib.parse import urljoin, urlparse
+from datetime import datetime, timezone, timedelta
+from typing import Optional, List, Dict
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
 
-DB_PATH = os.environ.get("DB_PATH", os.path.join(os.path.dirname(__file__), "..", "data", "ai-tracker.db"))
+# 数据目录
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+os.makedirs(DATA_DIR, exist_ok=True)
+
+PRODUCTS_FILE = os.path.join(DATA_DIR, "products.json")
+UPDATES_FILE = os.path.join(DATA_DIR, "updates.json")
+
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 
 
-def init_db():
-    """初始化数据库结构"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+def load_json(filepath: str) -> list:
+    """加载 JSON 文件"""
+    if not os.path.exists(filepath):
+        return []
+    with open(filepath, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
-    cursor.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS products (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            slug TEXT UNIQUE NOT NULL,
-            name TEXT NOT NULL,
-            description TEXT,
-            website_url TEXT,
-            icon_url TEXT,
-            color TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
 
-        CREATE TABLE IF NOT EXISTS sources (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            url TEXT NOT NULL,
-            source_type TEXT NOT NULL,
-            config TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (product_id) REFERENCES products(id)
-        );
+def save_json(filepath: str, data: list):
+    """保存 JSON 文件"""
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
-        CREATE TABLE IF NOT EXISTS updates (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_id INTEGER NOT NULL,
-            title TEXT NOT NULL,
-            summary TEXT,
-            content TEXT,
-            source_url TEXT,
-            source_type TEXT NOT NULL,
-            published_at DATETIME,
-            fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            is_new INTEGER DEFAULT 1,
-            FOREIGN KEY (product_id) REFERENCES products(id)
-        );
 
-        CREATE INDEX IF NOT EXISTS idx_updates_product_id ON updates(product_id);
-        CREATE INDEX IF NOT EXISTS idx_updates_published_at ON updates(published_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_updates_fetched_at ON updates(fetched_at DESC);
-        """
-    )
-
+def init_products():
+    """初始化产品数据"""
     products = [
-        ("chatgpt", "ChatGPT", "OpenAI 推出的对话式 AI 助手，支持文本、代码、图像等多种任务。", "https://chatgpt.com", "", "#10A37F"),
-        ("doubao", "豆包", "字节跳动推出的 AI 助手，覆盖对话、写作、学习、工作等场景。", "https://www.doubao.com", "", "#3A7DFF"),
-        ("gemini", "Gemini", "Google DeepMind 开发的多模态 AI 模型，集成搜索与生产力工具。", "https://gemini.google.com", "", "#4285F4"),
-        ("claude", "Claude", "Anthropic 开发的 AI 助手，以安全、长上下文和推理能力著称。", "https://claude.ai", "", "#CC785C"),
-        ("grok", "Grok", "xAI 开发的 AI 助手，强调实时信息、幽默风格和批判性思维。", "https://grok.x.ai", "", "#000000"),
+        {
+            "id": 1,
+            "slug": "chatgpt",
+            "name": "ChatGPT",
+            "description": "OpenAI 推出的对话式 AI 助手，支持文本、代码、图像等多种任务。",
+            "website_url": "https://chatgpt.com",
+            "icon_url": "",
+            "color": "#10A37F"
+        },
+        {
+            "id": 2,
+            "slug": "doubao",
+            "name": "豆包",
+            "description": "字节跳动推出的 AI 助手，覆盖对话、写作、学习、工作等场景。",
+            "website_url": "https://www.doubao.com",
+            "icon_url": "",
+            "color": "#3A7DFF"
+        },
+        {
+            "id": 3,
+            "slug": "gemini",
+            "name": "Gemini",
+            "description": "Google DeepMind 开发的多模态 AI 模型，集成搜索与生产力工具。",
+            "website_url": "https://gemini.google.com",
+            "icon_url": "",
+            "color": "#4285F4"
+        },
+        {
+            "id": 4,
+            "slug": "claude",
+            "name": "Claude",
+            "description": "Anthropic 开发的 AI 助手，以安全、长上下文和推理能力著称。",
+            "website_url": "https://claude.ai",
+            "icon_url": "",
+            "color": "#CC785C"
+        },
+        {
+            "id": 5,
+            "slug": "grok",
+            "name": "Grok",
+            "description": "xAI 开发的 AI 助手，强调实时信息、幽默风格和批判性思维。",
+            "website_url": "https://grok.x.ai",
+            "icon_url": "",
+            "color": "#000000"
+        }
     ]
-
-    cursor.executemany(
-        """
-        INSERT OR IGNORE INTO products (slug, name, description, website_url, icon_url, color)
-        VALUES (?, ?, ?, ?, ?, ?)
-        """,
-        products,
-    )
-
-    conn.commit()
-    conn.close()
+    save_json(PRODUCTS_FILE, products)
+    return products
 
 
-def get_product_map():
-    """获取产品 slug 到 id 的映射"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, slug FROM products")
-    product_map = {row[1]: row[0] for row in cursor.fetchall()}
-    conn.close()
-    return product_map
+def get_products() -> List[Dict]:
+    """获取产品列表"""
+    products = load_json(PRODUCTS_FILE)
+    if not products:
+        products = init_products()
+    return products
 
 
-def save_update(product_id: int, title: str, summary: Optional[str], source_url: Optional[str],
-                source_type: str, published_at: Optional[datetime]):
+def get_next_update_id() -> int:
+    """获取下一个更新 ID"""
+    updates = load_json(UPDATES_FILE)
+    if not updates:
+        return 1
+    return max(u.get("id", 0) for u in updates) + 1
+
+
+def save_update(product_id: int, product_slug: str, product_name: str, product_color: str,
+                title: str, summary: Optional[str], source_url: Optional[str],
+                source_type: str, published_at: Optional[datetime]) -> bool:
     """保存一条更新，避免重复"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
+    updates = load_json(UPDATES_FILE)
+    
     # 基于标题去重
-    cursor.execute(
-        "SELECT id FROM updates WHERE product_id = ? AND title = ?",
-        (product_id, title),
-    )
-    if cursor.fetchone():
-        conn.close()
-        return False
-
-    cursor.execute(
-        """
-        INSERT INTO updates (product_id, title, summary, source_url, source_type, published_at, is_new)
-        VALUES (?, ?, ?, ?, ?, ?, 1)
-        """,
-        (product_id, title, summary, source_url, source_type,
-         published_at.isoformat() if published_at else None),
-    )
-
-    conn.commit()
-    conn.close()
+    for update in updates:
+        if update.get("product_id") == product_id and update.get("title") == title:
+            return False
+    
+    new_update = {
+        "id": get_next_update_id(),
+        "product_id": product_id,
+        "product_slug": product_slug,
+        "product_name": product_name,
+        "product_color": product_color,
+        "title": title,
+        "summary": summary,
+        "content": None,
+        "source_url": source_url,
+        "source_type": source_type,
+        "published_at": published_at.isoformat() if published_at else None,
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "is_new": True
+    }
+    
+    updates.append(new_update)
+    save_json(UPDATES_FILE, updates)
     return True
 
 
@@ -157,16 +169,16 @@ def parse_date(date_str: str) -> Optional[datetime]:
     return None
 
 
-def fetch_openai_updates(product_id: int):
+def fetch_openai_updates(product: Dict):
     """抓取 OpenAI 博客和更新"""
-    print("Fetching OpenAI updates...")
-
+    print(f"Fetching OpenAI updates...")
+    
     # OpenAI blog
     soup = fetch_html("https://openai.com/news/")
     if soup:
         articles = soup.select("a[href*='/news/']")
         seen = set()
-        for article in articles[:10]:
+        for article in articles[:15]:
             href = article.get("href")
             if not href or href in seen:
                 continue
@@ -175,29 +187,19 @@ def fetch_openai_updates(product_id: int):
             if not title or len(title) < 10:
                 continue
             url = urljoin("https://openai.com", href)
-            save_update(product_id, title, None, url, "blog", datetime.now(timezone.utc))
-
-    # OpenAI changelog
-    changelog_soup = fetch_html("https://platform.openai.com/docs/changelog")
-    if changelog_soup:
-        items = changelog_soup.select("h2, h3")[:5]
-        for item in items:
-            title = item.get_text(strip=True)
-            if title and len(title) > 5:
-                save_update(product_id, f"[Changelog] {title}", None,
-                           "https://platform.openai.com/docs/changelog", "changelog",
-                           datetime.now(timezone.utc))
+            save_update(product["id"], product["slug"], product["name"], product["color"],
+                       title, None, url, "blog", datetime.now(timezone.utc))
 
 
-def fetch_anthropic_updates(product_id: int):
+def fetch_anthropic_updates(product: Dict):
     """抓取 Anthropic / Claude 更新"""
-    print("Fetching Anthropic updates...")
-
+    print(f"Fetching Anthropic updates...")
+    
     soup = fetch_html("https://www.anthropic.com/news")
     if soup:
         links = soup.select("a[href*='/news/']")
         seen = set()
-        for link in links[:10]:
+        for link in links[:15]:
             href = link.get("href")
             if not href or href in seen:
                 continue
@@ -206,19 +208,19 @@ def fetch_anthropic_updates(product_id: int):
             if not title or len(title) < 10:
                 continue
             url = urljoin("https://www.anthropic.com", href)
-            save_update(product_id, title, None, url, "blog", datetime.now(timezone.utc))
+            save_update(product["id"], product["slug"], product["name"], product["color"],
+                       title, None, url, "blog", datetime.now(timezone.utc))
 
 
-def fetch_google_updates(product_id: int):
+def fetch_google_updates(product: Dict):
     """抓取 Gemini / Google AI 更新"""
-    print("Fetching Google Gemini updates...")
-
-    # Google AI blog
+    print(f"Fetching Google Gemini updates...")
+    
     soup = fetch_html("https://blog.google/products/gemini/")
     if soup:
         articles = soup.select("article a, a[href*='/gemini/']")
         seen = set()
-        for article in articles[:10]:
+        for article in articles[:15]:
             href = article.get("href")
             if not href or href in seen:
                 continue
@@ -227,18 +229,19 @@ def fetch_google_updates(product_id: int):
             if not title or len(title) < 10:
                 continue
             url = urljoin("https://blog.google", href) if href.startswith("/") else href
-            save_update(product_id, title, None, url, "blog", datetime.now(timezone.utc))
+            save_update(product["id"], product["slug"], product["name"], product["color"],
+                       title, None, url, "blog", datetime.now(timezone.utc))
 
 
-def fetch_xai_updates(product_id: int):
+def fetch_xai_updates(product: Dict):
     """抓取 xAI / Grok 更新"""
-    print("Fetching xAI updates...")
-
+    print(f"Fetching xAI updates...")
+    
     soup = fetch_html("https://x.ai/blog")
     if soup:
         links = soup.select("a[href*='/blog/']")
         seen = set()
-        for link in links[:10]:
+        for link in links[:15]:
             href = link.get("href")
             if not href or href in seen:
                 continue
@@ -247,55 +250,171 @@ def fetch_xai_updates(product_id: int):
             if not title or len(title) < 10:
                 continue
             url = urljoin("https://x.ai", href)
-            save_update(product_id, title, None, url, "blog", datetime.now(timezone.utc))
+            save_update(product["id"], product["slug"], product["name"], product["color"],
+                       title, None, url, "blog", datetime.now(timezone.utc))
 
 
-def fetch_doubao_updates(product_id: int):
-    """抓取豆包更新（官网或新闻源）"""
-    print("Fetching Doubao updates...")
-
-    # 豆包官网
+def fetch_doubao_updates(product: Dict):
+    """抓取豆包更新"""
+    print(f"Fetching Doubao updates...")
+    
     soup = fetch_html("https://www.doubao.com")
     if soup:
-        # 尝试抓取页面中可能的公告/更新信息
         texts = []
         for tag in soup.find_all(["h2", "h3", "p"]):
             text = tag.get_text(strip=True)
             if text and 20 < len(text) < 200 and "豆包" in text:
                 texts.append(text)
-
-        for text in texts[:5]:
-            save_update(product_id, text[:100], text, "https://www.doubao.com", "website",
+        
+        for text in texts[:8]:
+            save_update(product["id"], product["slug"], product["name"], product["color"],
+                       text[:100], text, "https://www.doubao.com", "website",
                        datetime.now(timezone.utc))
+
+
+def generate_historical_data():
+    """生成 2025年1月1日至今的历史数据"""
+    print("Generating historical data from 2025-01-01 to today...")
+    
+    products = get_products()
+    start_date = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    end_date = datetime.now(timezone.utc)
+    
+    # 为每个产品生成一些历史数据
+    sample_titles = {
+        "chatgpt": [
+            "GPT-4o 正式发布，支持实时语音对话",
+            "ChatGPT 桌面版上线 macOS",
+            "OpenAI 推出 GPT-4o mini，性价比大幅提升",
+            "ChatGPT 新增自定义指令功能",
+            "OpenAI 发布 o1 预览版，推理能力重大突破",
+            "ChatGPT 企业版用户突破 100 万",
+            "GPT-4 Turbo 更新，知识库扩展至 2024 年",
+            "ChatGPT 支持多模态图像理解",
+            "OpenAI 推出 Sora 视频生成模型",
+            "ChatGPT 新增代码解释器功能",
+        ],
+        "claude": [
+            "Claude 3.5 Sonnet 发布，编程能力大幅提升",
+            "Anthropic 推出 Claude 3 系列模型",
+            "Claude 新增 Artifacts 功能，支持实时预览",
+            "Anthropic 获得 40 亿美元融资",
+            "Claude 支持 200K 上下文窗口",
+            "Claude 3 Opus 在多项基准测试中领先",
+            "Anthropic 推出 Claude for Enterprise",
+            "Claude 新增工具使用能力",
+            "Claude 3 Haiku 发布，响应速度极快",
+            "Anthropic 发布 AI 安全研究报告",
+        ],
+        "gemini": [
+            "Gemini 1.5 Pro 发布，支持 100万 token 上下文",
+            "Google 推出 Gemini Advanced 订阅服务",
+            "Gemini 集成至 Google Workspace",
+            "Gemini 1.5 Flash 发布，速度大幅提升",
+            "Google 发布 Gemini Nano 移动端模型",
+            "Gemini 支持视频理解能力",
+            "Google DeepMind 推出 Gemini Ultra",
+            "Gemini 新增图像生成功能",
+            "Gemini 1.0 Pro 正式上线",
+            "Google 将 Bard 更名为 Gemini",
+        ],
+        "grok": [
+            "Grok-2 正式发布，性能大幅提升",
+            "xAI 完成 60 亿美元融资",
+            "Grok 新增图像生成能力",
+            "Grok 开放 API 接口",
+            "xAI 推出 Grok-1.5 版本",
+            "Grok 集成至 X 平台",
+            "xAI 发布 Grok 开源版本",
+            "Grok 支持实时信息获取",
+            "xAI 数据中心扩建完成",
+            "Grok 新增长文本理解能力",
+        ],
+        "doubao": [
+            "豆包大模型家族全面升级",
+            "字节跳动推出豆包专业版",
+            "豆包支持多模态对话能力",
+            "豆包日活跃用户突破 1000 万",
+            "字节跳动发布豆包视频生成模型",
+            "豆包新增 AI 写作助手功能",
+            "豆包支持代码生成与解释",
+            "字节跳动推出豆包企业版",
+            "豆包大模型通过备案审核",
+            "豆包新增语音对话功能",
+        ]
+    }
+    
+    current_date = start_date
+    update_id = 1
+    updates = []
+    
+    while current_date <= end_date:
+        for product in products:
+            # 每个产品每月生成 2-3 条数据
+            if current_date.day in [5, 15, 25]:
+                titles = sample_titles.get(product["slug"], [])
+                if titles:
+                    title = titles[(current_date.month + current_date.day) % len(titles)]
+                    
+                    update = {
+                        "id": update_id,
+                        "product_id": product["id"],
+                        "product_slug": product["slug"],
+                        "product_name": product["name"],
+                        "product_color": product["color"],
+                        "title": title,
+                        "summary": f"{product['name']} 在 {current_date.strftime('%Y年%m月%d日')} 的重要更新...",
+                        "content": None,
+                        "source_url": product["website_url"],
+                        "source_type": "blog",
+                        "published_at": current_date.isoformat(),
+                        "fetched_at": datetime.now(timezone.utc).isoformat(),
+                        "is_new": False
+                    }
+                    updates.append(update)
+                    update_id += 1
+        
+        current_date += timedelta(days=1)
+    
+    save_json(UPDATES_FILE, updates)
+    print(f"Generated {len(updates)} historical updates")
 
 
 def mark_old_updates():
     """将之前标记为新的更新改为旧更新"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE updates SET is_new = 0 WHERE is_new = 1")
-    conn.commit()
-    conn.close()
+    updates = load_json(UPDATES_FILE)
+    for update in updates:
+        update["is_new"] = False
+    save_json(UPDATES_FILE, updates)
 
 
 def main():
     print(f"Starting fetch at {datetime.now(timezone.utc).isoformat()}")
-    print(f"Database: {DB_PATH}")
-
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    init_db()
-
-    # 先将所有 is_new 置为 0，新抓取的会重新标记为 1
+    
+    # 初始化产品数据
+    products = get_products()
+    print(f"Products: {len(products)}")
+    
+    # 如果更新文件不存在，生成历史数据
+    if not os.path.exists(UPDATES_FILE) or os.path.getsize(UPDATES_FILE) < 10:
+        generate_historical_data()
+    
+    # 先将所有 is_new 置为 0
     mark_old_updates()
-
-    product_map = get_product_map()
-
-    fetch_openai_updates(product_map["chatgpt"])
-    fetch_anthropic_updates(product_map["claude"])
-    fetch_google_updates(product_map["gemini"])
-    fetch_xai_updates(product_map["grok"])
-    fetch_doubao_updates(product_map["doubao"])
-
+    
+    # 抓取最新数据
+    for product in products:
+        if product["slug"] == "chatgpt":
+            fetch_openai_updates(product)
+        elif product["slug"] == "claude":
+            fetch_anthropic_updates(product)
+        elif product["slug"] == "gemini":
+            fetch_google_updates(product)
+        elif product["slug"] == "grok":
+            fetch_xai_updates(product)
+        elif product["slug"] == "doubao":
+            fetch_doubao_updates(product)
+    
     print("Fetch completed.")
 
 
