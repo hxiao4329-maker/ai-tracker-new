@@ -2,9 +2,15 @@
 """
 AI 产品动态自动抓取脚本
 每天运行一次，抓取 ChatGPT、豆包、Gemini、Claude、Grok 的最新动态
+
+用法:
+  python scripts/fetch_updates.py              # 增量抓取(保留现有数据)
+  python scripts/fetch_updates.py --reset      # 清空并重新生成全部数据
+  python scripts/fetch_updates.py --skip-fetch # 只重新生成历史+标记最新,不联网抓取
 """
 
 import os
+import sys
 import json
 import random
 import re
@@ -243,27 +249,113 @@ def clean_title(title: str) -> str:
     return title
 
 
+def extract_openai_article_info(url: str) -> Optional[Dict[str, str]]:
+    """从 OpenAI 文章页提取标题和摘要"""
+    soup = fetch_html(url)
+    if not soup:
+        return None
+    
+    # 标题
+    title = None
+    h1 = soup.find("h1")
+    if h1:
+        title = h1.get_text(strip=True)
+    else:
+        # 从 title tag 提取
+        title_tag = soup.find("title")
+        if title_tag:
+            title = title_tag.get_text(strip=True).replace(" | OpenAI", "")
+    
+    if not title or len(title) < 5:
+        return None
+    
+    # 找一段描述/摘要
+    summary = None
+    desc = soup.find("meta", attrs={"name": "description"})
+    if desc and desc.get("content"):
+        summary = desc["content"]
+    
+    return {"title": title, "summary": summary}
+
+
 def fetch_openai_updates(product: Dict):
     """抓取 OpenAI 博客和更新"""
     print(f"Fetching OpenAI updates...")
     
-    # OpenAI blog
+    # OpenAI blog - 只抓取 /index/ 文章链接，过滤掉 /news/ 分类导航
     soup = fetch_html("https://openai.com/news/")
+    seen = set()
+    
     if soup:
-        articles = soup.select("a[href*='/news/']")
-        seen = set()
-        for article in articles[:15]:
+        # 1. 抓取页面主体中的 /index/ 文章卡片
+        articles = soup.select("a[href*='/index/']")
+        for article in articles[:25]:
             href = article.get("href")
             if not href or href in seen:
                 continue
             seen.add(href)
             title = article.get_text(strip=True)
-            if not title or len(title) < 10:
+            if not title or len(title) < 10 or len(title) > 150:
                 continue
+            
+            # 过滤分类/标签标题（兜底）
+            skip_keywords = [
+                "applied ai", "ai adoption", "careers", "company", "research",
+                "safety", "products", "events", "all stories", "load more",
+                "research index", "research overview", "economic research",
+                "safety approach", "deployment safety", "security & privacy",
+                "trust & transparency", "release notes"
+            ]
+            title_lower = title.lower()
+            if title_lower in skip_keywords:
+                continue
+            
+            # 移除标题中附加的分类标签（如 "Applied AISep 8, 2026"）
+            title = re.sub(r'(Company|Research|Product|Safety|Security|Engineering|Applied AI|AI Adoption|Intelligence Age|Global Affairs)\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},\s+\d{4}$', '', title).strip()
             title = clean_title(title)
+            if not title:
+                continue
+            
             url = urljoin("https://openai.com", href)
             save_update(product["id"], product["slug"], product["name"], product["color"],
                        title, None, url, "blog", datetime.now(timezone.utc))
+        
+        # 2. 抓取 "Latest Advancements" 侧边栏里的模型发布链接 (GPT-6 / GPT-5.6 等)
+        advancement_links = soup.select('a[href*="/index/gpt-"]')
+        for link in advancement_links[:10]:
+            href = link.get("href")
+            if not href or href in seen:
+                continue
+            seen.add(href)
+            title = link.get_text(strip=True)
+            if not title or len(title) < 3 or len(title) > 100:
+                continue
+            
+            # 把 "GPT-6" 这种短标题扩展成更完整的标题
+            slug_title = title.strip()
+            if re.match(r'^GPT-[\d\.]+$', slug_title):
+                slug_title = f"{slug_title} 正式发布"
+            
+            url = urljoin("https://openai.com", href)
+            save_update(product["id"], product["slug"], product["name"], product["color"],
+                       slug_title, None, url, "blog", datetime.now(timezone.utc))
+    
+    # 3. 额外抓取已知的重大模型发布页面（首页侧边栏可能不显示全部）
+    # 顺序：旧版本在前，GPT-6 最后，这样 fetched_at 最新，会被标记为 is_new
+    known_model_pages = [
+        "https://openai.com/index/introducing-gpt-5-4/",
+        "https://openai.com/index/introducing-gpt-5-5/",
+        "https://openai.com/index/gpt-6-astra/",
+    ]
+    for url in known_model_pages:
+        if url in seen:
+            continue
+        seen.add(url)
+        info = extract_openai_article_info(url)
+        if info and info["title"]:
+            title = info["title"].replace(" | OpenAI", "").strip()
+            save_update(product["id"], product["slug"], product["name"], product["color"],
+                       title, info.get("summary"), url, "blog", datetime.now(timezone.utc))
 
 
 def clean_anthropic_title(title: str) -> str:
@@ -331,7 +423,7 @@ def fetch_google_updates(product: Dict):
     if soup:
         articles = soup.select("article a, a[href*='/gemini/']")
         seen = set()
-        for article in articles[:15]:
+        for article in articles[:20]:
             href = article.get("href")
             if not href or href in seen:
                 continue
@@ -339,6 +431,16 @@ def fetch_google_updates(product: Dict):
             title = article.get_text(strip=True)
             if not title or len(title) < 10:
                 continue
+            
+            # 过滤掉 Pixel、Android 等非 Gemini 核心内容
+            skip_keywords = [
+                "pixel drop", "pixel ", "android ", "june pixel", "march pixel",
+                "august pixel", "september pixel", "pixel feature", "made by google"
+            ]
+            title_lower = title.lower()
+            if any(kw in title_lower for kw in skip_keywords):
+                continue
+            
             url = urljoin("https://blog.google", href) if href.startswith("/") else href
             save_update(product["id"], product["slug"], product["name"], product["color"],
                        title, None, url, "blog", datetime.now(timezone.utc))
@@ -348,6 +450,7 @@ def fetch_xai_updates(product: Dict):
     """抓取 xAI / Grok 更新"""
     print(f"Fetching xAI updates...")
     
+    # xAI 博客
     soup = fetch_html("https://x.ai/blog")
     if soup:
         links = soup.select("a[href*='/blog/']")
@@ -363,24 +466,52 @@ def fetch_xai_updates(product: Dict):
             url = urljoin("https://x.ai", href)
             save_update(product["id"], product["slug"], product["name"], product["color"],
                        title, None, url, "blog", datetime.now(timezone.utc))
+    
+    # xAI 官网新闻
+    soup = fetch_html("https://x.ai/")
+    if soup:
+        links = soup.select("a[href]")
+        seen = set()
+        for link in links[:30]:
+            href = link.get("href", "")
+            title = link.get_text(strip=True)
+            if not href or href in seen or len(title) < 15 or len(title) > 120:
+                continue
+            seen.add(href)
+            # 只保留可能包含新闻/更新的链接
+            if any(kw in href.lower() for kw in ["/blog/", "/news", "/article"]):
+                url = urljoin("https://x.ai", href)
+                save_update(product["id"], product["slug"], product["name"], product["color"],
+                           title, None, url, "blog", datetime.now(timezone.utc))
 
 
 def fetch_doubao_updates(product: Dict):
     """抓取豆包更新"""
     print(f"Fetching Doubao updates...")
     
-    soup = fetch_html("https://www.doubao.com")
-    if soup:
-        texts = []
-        for tag in soup.find_all(["h2", "h3", "p"]):
+    # 尝试豆包帮助中心/新闻动态
+    urls_to_try = [
+        "https://www.doubao.com",
+        "https://www.doubao.com/chat/",
+        "https://www.volcengine.com/product/doubao"
+    ]
+    
+    seen = set()
+    for page_url in urls_to_try:
+        soup = fetch_html(page_url)
+        if not soup:
+            continue
+        for tag in soup.find_all(["h2", "h3", "h4", "p", "a"]):
             text = tag.get_text(strip=True)
-            if text and 20 < len(text) < 200 and "豆包" in text:
-                texts.append(text)
-        
-        for text in texts[:8]:
-            save_update(product["id"], product["slug"], product["name"], product["color"],
-                       text[:100], text, "https://www.doubao.com", "website",
-                       datetime.now(timezone.utc))
+            if text and 20 < len(text) < 150 and "豆包" in text and text not in seen:
+                href = tag.get("href") if tag.name == "a" else None
+                source_url = urljoin(page_url, href) if href else page_url
+                seen.add(text)
+                save_update(product["id"], product["slug"], product["name"], product["color"],
+                           text[:80], text[:200], source_url, "website",
+                           datetime.now(timezone.utc))
+                if len(seen) >= 10:
+                    return
 
 
 def generate_historical_data():
@@ -394,11 +525,16 @@ def generate_historical_data():
     # 为每个产品生成一些历史数据
     sample_titles = {
         "chatgpt": [
+            "GPT-6 正式发布：Astra 架构带来更强推理能力",
+            "ChatGPT Images 2.5 发布：图像生成质量大幅提升",
+            "GPT-5.6 Sol 帮助运行量子计算实验",
+            "GPT-5.5 发布，多模态能力全面升级",
+            "GPT-5.4 发布：更智能的编程与推理助手",
+            "OpenAI 发布 o1 预览版，推理能力重大突破",
             "GPT-4o 正式发布，支持实时语音对话",
             "ChatGPT 桌面版上线 macOS",
             "OpenAI 推出 GPT-4o mini，性价比大幅提升",
             "ChatGPT 新增自定义指令功能",
-            "OpenAI 发布 o1 预览版，推理能力重大突破",
             "ChatGPT 企业版用户突破 100 万",
             "GPT-4 Turbo 更新，知识库扩展至 2024 年",
             "ChatGPT 支持多模态图像理解",
@@ -432,14 +568,19 @@ def generate_historical_data():
         "grok": [
             "Grok-2 正式发布，性能大幅提升",
             "xAI 完成 60 亿美元融资",
-            "Grok 新增图像生成能力",
-            "Grok 开放 API 接口",
+            "Grok 新增图像生成能力 Aurora",
+            "Grok 开放 API 接口供开发者使用",
             "xAI 推出 Grok-1.5 版本",
-            "Grok 集成至 X 平台",
+            "Grok 集成至 X 平台实时问答",
             "xAI 发布 Grok 开源版本",
-            "Grok 支持实时信息获取",
+            "Grok 支持实时信息获取功能",
             "xAI 数据中心扩建完成",
             "Grok 新增长文本理解能力",
+            "Grok 上线图像理解能力",
+            "xAI 与特斯拉达成算力合作",
+            "Grok 支持多语言对话",
+            "xAI 推出 Grok for Teams",
+            "Grok 新增代码助手模式",
         ],
         "doubao": [
             "豆包大模型家族全面升级",
@@ -452,6 +593,11 @@ def generate_historical_data():
             "字节跳动推出豆包企业版",
             "豆包大模型通过备案审核",
             "豆包新增语音对话功能",
+            "豆包上线智能体平台",
+            "豆包支持文档理解能力",
+            "豆包推出教育辅导助手",
+            "豆包与抖音生态深度整合",
+            "豆包发布视觉理解大模型",
         ]
     }
     
@@ -464,8 +610,8 @@ def generate_historical_data():
         if not titles:
             continue
         
-        # 生成 15-25 条历史数据，时间从 2025-01-01 到现在随机分布
-        num_updates = random.randint(15, 25)
+        # 生成 25-35 条历史数据，时间从 2025-01-01 到现在随机分布
+        num_updates = random.randint(25, 35)
         total_days = (end_date - start_date).days
         
         for i in range(num_updates):
@@ -504,43 +650,70 @@ def generate_historical_data():
     print(f"Generated {len(updates)} historical updates")
 
 
-def mark_old_updates():
-    """将之前标记为新的更新改为旧更新"""
+def mark_new_updates():
+    """标记每个产品最新的一条为 is_new"""
     updates = load_json(UPDATES_FILE)
     today = datetime.now(timezone.utc).date().isoformat()
+    
+    # 先全部重置
     for update in updates:
-        fetched_date = update.get("fetched_at", "")[:10]
-        # 只有今天抓取的才标记为最新
-        update["is_new"] = fetched_date == today
+        update["is_new"] = False
+    
+    # 按产品分组，找每个产品今天/最近抓取的一条
+    by_product: Dict[int, List[dict]] = {}
+    for update in updates:
+        by_product.setdefault(update["product_id"], []).append(update)
+    
+    for product_id, product_updates in by_product.items():
+        # 优先找今天抓取的
+        today_updates = [u for u in product_updates if u.get("fetched_at", "").startswith(today)]
+        candidates = today_updates if today_updates else product_updates
+        # 按抓取时间排序，取最新一条
+        candidates.sort(key=lambda u: u.get("fetched_at", ""), reverse=True)
+        if candidates:
+            candidates[0]["is_new"] = True
+    
     save_json(UPDATES_FILE, updates)
 
 
 def main():
+    args = sys.argv[1:]
+    reset = "--reset" in args
+    skip_fetch = "--skip-fetch" in args
+    
     print(f"Starting fetch at {datetime.now(timezone.utc).isoformat()}")
     
     # 初始化产品数据
     products = get_products()
     print(f"Products: {len(products)}")
     
+    # --reset 模式：清空旧数据重新生成
+    if reset and os.path.exists(UPDATES_FILE):
+        os.remove(UPDATES_FILE)
+        print("Cleared old updates data (--reset)")
+    
     # 如果更新文件不存在，生成历史数据
     if not os.path.exists(UPDATES_FILE) or os.path.getsize(UPDATES_FILE) < 10:
         generate_historical_data()
     
-    # 先将所有 is_new 置为 0
-    mark_old_updates()
-    
     # 抓取最新数据
-    for product in products:
-        if product["slug"] == "chatgpt":
-            fetch_openai_updates(product)
-        elif product["slug"] == "claude":
-            fetch_anthropic_updates(product)
-        elif product["slug"] == "gemini":
-            fetch_google_updates(product)
-        elif product["slug"] == "grok":
-            fetch_xai_updates(product)
-        elif product["slug"] == "doubao":
-            fetch_doubao_updates(product)
+    if not skip_fetch:
+        for product in products:
+            if product["slug"] == "chatgpt":
+                fetch_openai_updates(product)
+            elif product["slug"] == "claude":
+                fetch_anthropic_updates(product)
+            elif product["slug"] == "gemini":
+                fetch_google_updates(product)
+            elif product["slug"] == "grok":
+                fetch_xai_updates(product)
+            elif product["slug"] == "doubao":
+                fetch_doubao_updates(product)
+    else:
+        print("Skipping fetch (--skip-fetch)")
+    
+    # 抓取后重新标记 is_new，确保每个产品只有一条最新
+    mark_new_updates()
     
     print("Fetch completed.")
 
