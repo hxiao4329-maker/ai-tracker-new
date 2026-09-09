@@ -9,7 +9,8 @@ import { getProducts, getUpdates, getProductUpdateCount, getProductLastUpdated }
 
 export default function Home() {
   const products = getProducts();
-  const updates = getUpdates(20);
+  const allUpdates = getUpdates();
+  const updates = allUpdates.slice(0, 20);
 
   const productsWithStats = products.map(product => ({
     ...product,
@@ -17,7 +18,7 @@ export default function Home() {
     last_updated: getProductLastUpdated(product.slug),
   }));
 
-  const totalUpdates = updates.length;
+  const totalUpdates = allUpdates.length;
   const todayUpdates = updates.filter(u => {
     const d = new Date(u.published_at || u.fetched_at);
     const today = new Date();
