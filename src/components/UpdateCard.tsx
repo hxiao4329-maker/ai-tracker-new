@@ -22,9 +22,15 @@ export default function UpdateCard({ update, showProduct = false }: UpdateCardPr
   const date = update.published_at || update.fetched_at;
 
   return (
-    <article className="group bg-white/80 backdrop-blur rounded-2xl border border-slate-200/80 p-6 hover:shadow-lg hover:border-slate-300/80 transition-all duration-200">
+    <article 
+      className="group relative overflow-hidden bg-white/80 backdrop-blur rounded-2xl border border-slate-200/80 p-6 hover:shadow-lg hover:border-slate-300/80 transition-all duration-200"
+    >
+      <div
+        className="absolute left-0 top-0 bottom-0 w-1 opacity-60 group-hover:opacity-100 transition-opacity"
+        style={{ backgroundColor: update.product_color }}
+      ></div>
       <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 pl-3">
           <div className="flex flex-wrap items-center gap-3 mb-3">
             {showProduct && (
               <span
@@ -45,6 +51,9 @@ export default function UpdateCard({ update, showProduct = false }: UpdateCardPr
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               {new Date(date).toLocaleDateString('zh-CN')}
+            </span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">
+              {update.source_type === 'blog' ? '博客' : update.source_type === 'changelog' ? '更新日志' : update.source_type}
             </span>
           </div>
           <h3 className="text-base font-bold text-slate-900 mb-2 group-hover:text-blue-700 transition-colors">{update.title}</h3>
