@@ -97,6 +97,46 @@ def init_products():
             "icon_url": "",
             "icon": "🚀",
             "color": "#000000"
+        },
+        {
+            "id": 6,
+            "slug": "qwen",
+            "name": "通义千问",
+            "description": "阿里云推出的多模态大语言模型，覆盖对话、代码、搜索与生产力场景。",
+            "website_url": "https://tongyi.aliyun.com",
+            "icon_url": "",
+            "icon": "🌐",
+            "color": "#5F31FF"
+        },
+        {
+            "id": 7,
+            "slug": "kimi",
+            "name": "Kimi",
+            "description": "月之暗面推出的 AI 助手，以超长上下文和深度文档处理著称。",
+            "website_url": "https://kimi.moonshot.cn",
+            "icon_url": "",
+            "icon": "🌙",
+            "color": "#0080FF"
+        },
+        {
+            "id": 8,
+            "slug": "jimeng",
+            "name": "即梦",
+            "description": "字节跳动推出的 AI 创作平台，支持图像生成、视频生成与创意编辑。",
+            "website_url": "https://jimeng.jianying.com",
+            "icon_url": "",
+            "icon": "🎨",
+            "color": "#FF6A00"
+        },
+        {
+            "id": 9,
+            "slug": "deepseek",
+            "name": "DeepSeek",
+            "description": "DeepSeek 推出的高性能大模型系列，以推理能力和开源生态著称。",
+            "website_url": "https://www.deepseek.com",
+            "icon_url": "",
+            "icon": "🐳",
+            "color": "#4D6BFA"
         }
     ]
     save_json(PRODUCTS_FILE, products)
@@ -514,6 +554,118 @@ def fetch_doubao_updates(product: Dict):
                     return
 
 
+def fetch_qwen_updates(product: Dict):
+    """抓取通义千问更新"""
+    print(f"Fetching Qwen updates...")
+    
+    urls_to_try = [
+        "https://qwenlm.ai/blog",
+        "https://tongyi.aliyun.com/qianwen/",
+        "https://help.aliyun.com/zh/tongyi/"
+    ]
+    
+    seen = set()
+    for page_url in urls_to_try:
+        soup = fetch_html(page_url)
+        if not soup:
+            continue
+        for tag in soup.find_all(["h2", "h3", "h4", "a"]):
+            text = tag.get_text(strip=True)
+            if text and 15 < len(text) < 120 and text not in seen:
+                href = tag.get("href") if tag.name == "a" else None
+                source_url = urljoin(page_url, href) if href else page_url
+                seen.add(text)
+                save_update(product["id"], product["slug"], product["name"], product["color"],
+                           text, None, source_url, "blog",
+                           datetime.now(timezone.utc))
+                if len(seen) >= 10:
+                    return
+
+
+def fetch_kimi_updates(product: Dict):
+    """抓取 Kimi 更新"""
+    print(f"Fetching Kimi updates...")
+    
+    urls_to_try = [
+        "https://kimi.moonshot.cn/news",
+        "https://www.moonshot.cn/news",
+        "https://kimi.moonshot.cn/help"
+    ]
+    
+    seen = set()
+    for page_url in urls_to_try:
+        soup = fetch_html(page_url)
+        if not soup:
+            continue
+        for tag in soup.find_all(["h2", "h3", "h4", "a", "p"]):
+            text = tag.get_text(strip=True)
+            if text and 15 < len(text) < 120 and text not in seen:
+                href = tag.get("href") if tag.name == "a" else None
+                source_url = urljoin(page_url, href) if href else page_url
+                seen.add(text)
+                save_update(product["id"], product["slug"], product["name"], product["color"],
+                           text, None, source_url, "blog",
+                           datetime.now(timezone.utc))
+                if len(seen) >= 10:
+                    return
+
+
+def fetch_jimeng_updates(product: Dict):
+    """抓取即梦更新"""
+    print(f"Fetching Jimeng updates...")
+    
+    urls_to_try = [
+        "https://jimeng.jianying.com/",
+        "https://jimeng.jianying.com/help",
+        "https://www.capcut.cn/"
+    ]
+    
+    seen = set()
+    for page_url in urls_to_try:
+        soup = fetch_html(page_url)
+        if not soup:
+            continue
+        for tag in soup.find_all(["h2", "h3", "h4", "a", "p"]):
+            text = tag.get_text(strip=True)
+            if text and 15 < len(text) < 120 and text not in seen:
+                href = tag.get("href") if tag.name == "a" else None
+                source_url = urljoin(page_url, href) if href else page_url
+                seen.add(text)
+                save_update(product["id"], product["slug"], product["name"], product["color"],
+                           text, None, source_url, "website",
+                           datetime.now(timezone.utc))
+                if len(seen) >= 10:
+                    return
+
+
+def fetch_deepseek_updates(product: Dict):
+    """抓取 DeepSeek 更新"""
+    print(f"Fetching DeepSeek updates...")
+    
+    urls_to_try = [
+        "https://www.deepseek.com/updates",
+        "https://api-docs.deepseek.com/",
+        "https://www.deepseek.com/news"
+    ]
+    
+    seen = set()
+    for page_url in urls_to_try:
+        soup = fetch_html(page_url)
+        if not soup:
+            continue
+        for tag in soup.find_all(["h2", "h3", "h4", "a", "p"]):
+            text = tag.get_text(strip=True)
+            if text and 15 < len(text) < 120 and text not in seen:
+                href = tag.get("href") if tag.name == "a" else None
+                source_url = urljoin(page_url, href) if href else page_url
+                seen.add(text)
+                save_update(product["id"], product["slug"], product["name"], product["color"],
+                           text, None, source_url, "blog",
+                           datetime.now(timezone.utc))
+                if len(seen) >= 10:
+                    return
+
+
 def generate_historical_data():
     """生成 2025年1月1日至今的历史数据"""
     print("Generating historical data from 2025-01-01 to today...")
@@ -598,6 +750,74 @@ def generate_historical_data():
             "豆包推出教育辅导助手",
             "豆包与抖音生态深度整合",
             "豆包发布视觉理解大模型",
+        ],
+        "qwen": [
+            "通义千问 3.0 正式发布",
+            "通义千问开源 QwQ-32B 推理模型",
+            "阿里云发布通义万相 2.1",
+            "通义千问支持百万字长文档理解",
+            "通义千问 App 日活突破千万",
+            "通义千问上线代码助手功能",
+            "阿里云推出通义千问企业版",
+            "通义千问通过大模型服务备案",
+            "通义千问支持多模态图文理解",
+            "通义千问开放 API 接口",
+            "通义千问接入钉钉办公生态",
+            "通义千问发布数学推理增强版",
+            "通义千问支持实时联网搜索",
+            "阿里云开源通义千问 2.5 系列",
+            "通义千问推出音频理解能力",
+        ],
+        "kimi": [
+            "Kimi k1.5 长思考模型发布",
+            "Kimi 支持 200 万字上下文",
+            "月之暗面完成新一轮融资",
+            "Kimi 浏览器助手正式上线",
+            "Kimi 推出 PPT 生成功能",
+            "Kimi 支持语音输入与朗读",
+            "Kimi 上线 AI 搜索功能",
+            "月之暗面发布 Kimi 企业版",
+            "Kimi 支持多文件同时解析",
+            "Kimi 推出代码助手 Kimi Code",
+            "Kimi 接入钉钉与飞书生态",
+            "Kimi 支持图片理解与生成",
+            "月之暗面开源部分模型权重",
+            "Kimi 上线网页总结功能",
+            "Kimi 日活跃用户突破新高",
+        ],
+        "jimeng": [
+            "即梦上线视频生成功能 2.0",
+            "即梦支持文生图智能编辑",
+            "即梦推出角色一致性功能",
+            "即梦上线 AI 海报设计模板",
+            "即梦支持中文艺术字生成",
+            "即梦发布视频对口型功能",
+            "即梦接入剪映剪辑工作流",
+            "即梦支持图生视频能力",
+            "即梦上线社区灵感广场",
+            "即梦推出会员订阅服务",
+            "即梦支持多风格模型切换",
+            "即梦发布移动端 App",
+            "即梦上线智能扩图功能",
+            "即梦支持高清分辨率导出",
+            "即梦与抖音内容生态联动",
+        ],
+        "deepseek": [
+            "DeepSeek-V3 正式发布",
+            "DeepSeek-R1 推理模型开源",
+            "DeepSeek 上线官方 App",
+            "DeepSeek  API 价格大幅下调",
+            "DeepSeek 支持多模态理解",
+            "DeepSeek 发布代码模型 Code-V2",
+            "DeepSeek 开源 MoE 架构细节",
+            "DeepSeek 推出长文本模型",
+            "DeepSeek 通过大模型备案",
+            "DeepSeek 支持联网搜索能力",
+            "DeepSeek 上线企业版服务",
+            "DeepSeek 发布数学推理模型",
+            "DeepSeek 模型下载量突破新高",
+            "DeepSeek 与多家云厂商合作",
+            "DeepSeek 推出多语言版本",
         ]
     }
     
@@ -709,6 +929,14 @@ def main():
                 fetch_xai_updates(product)
             elif product["slug"] == "doubao":
                 fetch_doubao_updates(product)
+            elif product["slug"] == "qwen":
+                fetch_qwen_updates(product)
+            elif product["slug"] == "kimi":
+                fetch_kimi_updates(product)
+            elif product["slug"] == "jimeng":
+                fetch_jimeng_updates(product)
+            elif product["slug"] == "deepseek":
+                fetch_deepseek_updates(product)
     else:
         print("Skipping fetch (--skip-fetch)")
     

@@ -5,18 +5,23 @@ import UpdateCard from '@/components/UpdateCard';
 import StatsWidget from '@/components/StatsWidget';
 import CategoryPills from '@/components/CategoryPills';
 import BackgroundDecorations from '@/components/BackgroundDecorations';
-import { getProducts, getUpdates, getProductUpdateCount, getProductLastUpdated } from '@/lib/data';
+import { getProducts, getUpdates, getProductUpdateCount, getProductLastUpdated, getProductsByRegion } from '@/lib/data';
 
 export default function Home() {
   const products = getProducts();
+  const domesticProducts = getProductsByRegion('domestic');
+  const overseasProducts = getProductsByRegion('overseas');
   const allUpdates = getUpdates();
   const updates = allUpdates.slice(0, 20);
 
-  const productsWithStats = products.map(product => ({
+  const withStats = (list: typeof products) => list.map(product => ({
     ...product,
     update_count: getProductUpdateCount(product.slug),
     last_updated: getProductLastUpdated(product.slug),
   }));
+  const productsWithStats = withStats(products);
+  const domesticWithStats = withStats(domesticProducts);
+  const overseasWithStats = withStats(overseasProducts);
 
   const totalUpdates = allUpdates.length;
   const todayUpdates = allUpdates.filter(u => {
@@ -62,7 +67,7 @@ export default function Home() {
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50/80 backdrop-blur border border-indigo-100 text-xs font-medium text-indigo-600 shadow-sm">
               <span>🤖</span>
-              5 款 AI 产品
+              {products.length} 款 AI 产品
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50/80 backdrop-blur border border-amber-100 text-xs font-medium text-amber-600 shadow-sm">
               <span>⚡</span>
@@ -76,7 +81,7 @@ export default function Home() {
             </span>
           </h1>
           <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed mb-8">
-            每天自动追踪 ChatGPT、豆包、Gemini、Claude、Grok 等主流 AI 产品的最新动态
+            聚合国内与海外主流 AI 产品动态，按国产、海外两大板块分类追踪
           </p>
 
           {/* 数据摘要条 */}
@@ -103,15 +108,33 @@ export default function Home() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
           {/* Products Grid */}
-          <section className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-slate-900">追踪的产品</h2>
-              <span className="text-sm text-slate-500">{products.length} 款产品</span>
+          <section className="lg:col-span-2 space-y-12">
+            {/* 国内板块 */}
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <span className="text-2xl">🇨🇳</span>
+                <h2 className="text-2xl font-bold text-slate-900">国内 AI</h2>
+                <span className="text-sm text-slate-500 ml-auto">{domesticProducts.length} 款</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {domesticWithStats.map(product => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {productsWithStats.map(product => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+
+            {/* 海外板块 */}
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <span className="text-2xl">🌍</span>
+                <h2 className="text-2xl font-bold text-slate-900">海外 AI</h2>
+                <span className="text-sm text-slate-500 ml-auto">{overseasProducts.length} 款</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {overseasWithStats.map(product => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
             </div>
           </section>
 

@@ -14,6 +14,7 @@ export interface Product {
   icon_url: string;
   icon: string;
   color: string;
+  region: 'domestic' | 'overseas';
 }
 
 export interface Update {
@@ -76,4 +77,8 @@ export function getProductLastUpdated(slug: string): string | null {
   const updates = getUpdatesByProduct(slug);
   if (updates.length === 0) return null;
   return updates[0].published_at || updates[0].fetched_at;
+}
+
+export function getProductsByRegion(region: 'domestic' | 'overseas'): Product[] {
+  return getProducts().filter(p => p.region === region);
 }

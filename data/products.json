@@ -7,7 +7,8 @@
     "website_url": "https://chatgpt.com",
     "icon_url": "",
     "icon": "💬",
-    "color": "#10A37F"
+    "color": "#10A37F",
+    "region": "overseas"
   },
   {
     "id": 2,
@@ -17,7 +18,8 @@
     "website_url": "https://www.doubao.com",
     "icon_url": "",
     "icon": "🥟",
-    "color": "#3A7DFF"
+    "color": "#3A7DFF",
+    "region": "domestic"
   },
   {
     "id": 3,
@@ -27,7 +29,8 @@
     "website_url": "https://gemini.google.com",
     "icon_url": "",
     "icon": "♊",
-    "color": "#4285F4"
+    "color": "#4285F4",
+    "region": "overseas"
   },
   {
     "id": 4,
@@ -37,7 +40,8 @@
     "website_url": "https://claude.ai",
     "icon_url": "",
     "icon": "🧠",
-    "color": "#CC785C"
+    "color": "#CC785C",
+    "region": "overseas"
   },
   {
     "id": 5,
@@ -47,6 +51,51 @@
     "website_url": "https://grok.x.ai",
     "icon_url": "",
     "icon": "🚀",
-    "color": "#000000"
+    "color": "#000000",
+    "region": "overseas"
+  },
+  {
+    "id": 6,
+    "slug": "qwen",
+    "name": "通义千问",
+    "description": "阿里云推出的多模态大语言模型，覆盖对话、代码、搜索与生产力场景。",
+    "website_url": "https://tongyi.aliyun.com",
+    "icon_url": "",
+    "icon": "🌐",
+    "color": "#5F31FF",
+    "region": "domestic"
+  },
+  {
+    "id": 7,
+    "slug": "kimi",
+    "name": "Kimi",
+    "description": "月之暗面推出的 AI 助手，以超长上下文和深度文档处理著称。",
+    "website_url": "https://kimi.moonshot.cn",
+    "icon_url": "",
+    "icon": "🌙",
+    "color": "#0080FF",
+    "region": "domestic"
+  },
+  {
+    "id": 8,
+    "slug": "jimeng",
+    "name": "即梦",
+    "description": "字节跳动推出的 AI 创作平台，支持图像生成、视频生成与创意编辑。",
+    "website_url": "https://jimeng.jianying.com",
+    "icon_url": "",
+    "icon": "🎨",
+    "color": "#FF6A00",
+    "region": "domestic"
+  },
+  {
+    "id": 9,
+    "slug": "deepseek",
+    "name": "DeepSeek",
+    "description": "DeepSeek 推出的高性能大模型系列，以推理能力和开源生态著称。",
+    "website_url": "https://www.deepseek.com",
+    "icon_url": "",
+    "icon": "🐳",
+    "color": "#4D6BFA",
+    "region": "domestic"
   }
 ]
