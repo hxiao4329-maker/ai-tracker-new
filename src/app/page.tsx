@@ -51,18 +51,51 @@ export default function Home() {
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative">
         {/* Hero Section */}
-        <section className="text-center mb-12 relative">
-          <div className="absolute inset-0 -z-10 blur-3xl bg-gradient-to-r from-blue-100/50 via-purple-100/30 to-pink-100/30 rounded-full opacity-60"></div>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 backdrop-blur border border-slate-200 text-sm text-slate-600 mb-6 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            每日自动更新
+        <section className="text-center mb-16 relative">
+          <div className="absolute inset-0 -z-10 blur-3xl bg-gradient-to-r from-blue-200/40 via-purple-200/30 to-pink-200/30 rounded-full opacity-70 scale-110"></div>
+
+          {/* 顶部装饰小徽章 */}
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur border border-slate-200 text-xs font-medium text-slate-600 shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              每日自动更新
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50/80 backdrop-blur border border-indigo-100 text-xs font-medium text-indigo-600 shadow-sm">
+              <span>🤖</span>
+              5 款 AI 产品
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50/80 backdrop-blur border border-amber-100 text-xs font-medium text-amber-600 shadow-sm">
+              <span>⚡</span>
+              实时聚合
+            </span>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 mb-6 tracking-tight">
-            AI 动态追踪
+
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 mb-6 tracking-tight">
+            <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+              AI 动态追踪
+            </span>
           </h1>
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed mb-8">
             每天自动追踪 ChatGPT、豆包、Gemini、Claude、Grok 等主流 AI 产品的最新动态
           </p>
+
+          {/* 数据摘要条 */}
+          <div className="inline-flex items-center gap-6 px-6 py-3 rounded-2xl bg-white/60 backdrop-blur border border-slate-200/60 shadow-sm text-sm text-slate-600">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">📊</span>
+              <span><strong className="text-slate-900">{totalUpdates}+</strong> 条动态</span>
+            </div>
+            <div className="w-px h-4 bg-slate-300"></div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🔥</span>
+              <span><strong className="text-slate-900">{todayUpdates}</strong> 条今日更新</span>
+            </div>
+            <div className="w-px h-4 bg-slate-300 hidden sm:block"></div>
+            <div className="hidden sm:flex items-center gap-2">
+              <span className="text-lg">🚀</span>
+              <span>UTC 02:00 自动同步</span>
+            </div>
+          </div>
         </section>
 
         {/* Stats Widget */}

@@ -21,13 +21,18 @@ export default function ProductCard({ product }: ProductCardProps) {
   return (
     <Link
       href={`/product/${product.slug}`}
-      className="group relative block bg-white rounded-2xl border border-slate-200/80 p-6 hover:shadow-xl hover:-translate-y-1 hover:border-slate-300/80 transition-all duration-300 overflow-hidden"
+      className="group relative block bg-white/90 backdrop-blur rounded-2xl border border-slate-200/80 p-6 hover:shadow-xl hover:-translate-y-1 hover:border-slate-300/80 hover:bg-white transition-all duration-300 overflow-hidden"
     >
+      {/* 左侧品牌色条 */}
+      <div
+        className="absolute left-0 top-6 bottom-6 w-1 rounded-full opacity-60 group-hover:opacity-100 group-hover:h-[calc(100%-32px)] group-hover:top-4 transition-all duration-300"
+        style={{ backgroundColor: product.color }}
+      ></div>
       <div
         className="absolute -right-8 -top-8 w-32 h-32 rounded-full opacity-0 group-hover:opacity-10 transition-opacity duration-500 blur-2xl"
         style={{ backgroundColor: product.color }}
       ></div>
-      <div className="flex items-start justify-between mb-4 relative">
+      <div className="flex items-start justify-between mb-4 relative pl-3">
         <div
           className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-md"
           style={{ backgroundColor: `${product.color}15`, color: product.color }}

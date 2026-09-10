@@ -23,7 +23,7 @@ export default function UpdateCard({ update, showProduct = false }: UpdateCardPr
 
   return (
     <article 
-      className="group relative overflow-hidden bg-white/80 backdrop-blur rounded-2xl border border-slate-200/80 p-6 hover:shadow-lg hover:border-slate-300/80 transition-all duration-200"
+      className="group relative overflow-hidden bg-white/80 backdrop-blur rounded-2xl border border-slate-200/80 p-6 hover:shadow-lg hover:border-slate-300/80 hover:-translate-y-0.5 transition-all duration-200"
     >
       <div
         className="absolute left-0 top-0 bottom-0 w-1 opacity-60 group-hover:opacity-100 transition-opacity"
@@ -41,8 +41,8 @@ export default function UpdateCard({ update, showProduct = false }: UpdateCardPr
               </span>
             )}
             {update.is_new && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-100">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
                 最新
               </span>
             )}
