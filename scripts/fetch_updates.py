@@ -137,6 +137,16 @@ def init_products():
             "icon_url": "",
             "icon": "🐳",
             "color": "#4D6BFA"
+        },
+        {
+            "id": 10,
+            "slug": "codex",
+            "name": "Codex",
+            "description": "OpenAI 推出的 AI 编程智能体，支持云端代码生成、解释与自动化编程任务。",
+            "website_url": "https://codex.openai.com",
+            "icon_url": "",
+            "icon": "⌨️",
+            "color": "#1F1F1F"
         }
     ]
     save_json(PRODUCTS_FILE, products)
@@ -486,6 +496,34 @@ def fetch_google_updates(product: Dict):
                        title, None, url, "blog", datetime.now(timezone.utc))
 
 
+def fetch_codex_updates(product: Dict):
+    """抓取 Codex 更新"""
+    print(f"Fetching Codex updates...")
+    
+    urls_to_try = [
+        "https://codex.openai.com",
+        "https://openai.com/index/introducing-codex/",
+        "https://platform.openai.com/docs/codex"
+    ]
+    
+    seen = set()
+    for page_url in urls_to_try:
+        soup = fetch_html(page_url)
+        if not soup:
+            continue
+        for tag in soup.find_all(["h1", "h2", "h3", "h4", "a", "p"]):
+            text = tag.get_text(strip=True)
+            if text and 15 < len(text) < 120 and text not in seen:
+                href = tag.get("href") if tag.name == "a" else None
+                source_url = urljoin(page_url, href) if href else page_url
+                seen.add(text)
+                save_update(product["id"], product["slug"], product["name"], product["color"],
+                           text, None, source_url, "blog",
+                           datetime.now(timezone.utc))
+                if len(seen) >= 10:
+                    return
+
+
 def fetch_xai_updates(product: Dict):
     """抓取 xAI / Grok 更新"""
     print(f"Fetching xAI updates...")
@@ -818,6 +856,23 @@ def generate_historical_data():
             "DeepSeek 模型下载量突破新高",
             "DeepSeek 与多家云厂商合作",
             "DeepSeek 推出多语言版本",
+        ],
+        "codex": [
+            "Codex 正式发布：云端 AI 编程智能体",
+            "Codex 支持多文件代码理解与修改",
+            "OpenAI 推出 Codex CLI 命令行工具",
+            "Codex 集成 GitHub 自动化工作流",
+            "Codex 支持 Python、JS、Go 等主流语言",
+            "OpenAI 发布 Codex 企业版",
+            "Codex 实现自然语言转代码",
+            "Codex 支持单元测试自动生成",
+            "OpenAI 升级 Codex 上下文窗口",
+            "Codex 上线代码解释与重构功能",
+            "Codex 支持语音指令编程",
+            "OpenAI 开源 Codex 评估基准",
+            "Codex 新增团队协作模式",
+            "Codex 提升复杂项目理解能力",
+            "OpenAI 推出 Codex API 接口",
         ]
     }
     
@@ -937,6 +992,8 @@ def main():
                 fetch_jimeng_updates(product)
             elif product["slug"] == "deepseek":
                 fetch_deepseek_updates(product)
+            elif product["slug"] == "codex":
+                fetch_codex_updates(product)
     else:
         print("Skipping fetch (--skip-fetch)")
     

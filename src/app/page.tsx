@@ -106,50 +106,41 @@ export default function Home() {
         {/* Stats Widget */}
         <StatsWidget stats={stats} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
-          {/* Products Grid */}
-          <section className="lg:col-span-2 space-y-12">
-            {/* 国内板块 */}
-            <div>
-              <div className="flex items-center gap-3 mb-6">
-                <span className="text-2xl">🇨🇳</span>
-                <h2 className="text-2xl font-bold text-slate-900">国内 AI</h2>
-                <span className="text-sm text-slate-500 ml-auto">{domesticProducts.length} 款</span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {domesticWithStats.map(product => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
+        {/* Products Grid - 海外在左，国内在右 */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+          {/* 海外板块 */}
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <span className="text-2xl">🌍</span>
+              <h2 className="text-2xl font-bold text-slate-900">海外 AI</h2>
+              <span className="text-sm text-slate-500 ml-auto">{overseasProducts.length} 款</span>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {overseasWithStats.map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          </div>
 
-            {/* 海外板块 */}
-            <div>
-              <div className="flex items-center gap-3 mb-6">
-                <span className="text-2xl">🌍</span>
-                <h2 className="text-2xl font-bold text-slate-900">海外 AI</h2>
-                <span className="text-sm text-slate-500 ml-auto">{overseasProducts.length} 款</span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {overseasWithStats.map(product => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
+          {/* 国内板块 */}
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <span className="text-2xl">🇨🇳</span>
+              <h2 className="text-2xl font-bold text-slate-900">国内 AI</h2>
+              <span className="text-sm text-slate-500 ml-auto">{domesticProducts.length} 款</span>
             </div>
-          </section>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {domesticWithStats.map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          </div>
+        </section>
 
-          {/* Sidebar */}
-          <aside className="space-y-6">
-            <CategoryPills categories={categories} />
-            <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
-              <div className="text-2xl mb-2">🚀</div>
-              <h3 className="font-bold text-lg mb-2">保持同步</h3>
-              <p className="text-sm text-white/90 leading-relaxed">
-                每天 UTC 02:00 自动抓取，第一时间获取 AI 巨头的最新发布与功能更新。
-              </p>
-            </div>
-          </aside>
-        </div>
+        {/* 分类来源分布 */}
+        <section className="mb-16">
+          <CategoryPills categories={categories} />
+        </section>
 
         {/* Latest Updates */}
         <section>

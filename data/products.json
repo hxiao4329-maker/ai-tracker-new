@@ -55,6 +55,17 @@
     "region": "overseas"
   },
   {
+    "id": 10,
+    "slug": "codex",
+    "name": "Codex",
+    "description": "OpenAI 推出的 AI 编程智能体，支持云端代码生成、解释与自动化编程任务。",
+    "website_url": "https://codex.openai.com",
+    "icon_url": "",
+    "icon": "⌨️",
+    "color": "#1F1F1F",
+    "region": "overseas"
+  },
+  {
     "id": 6,
     "slug": "qwen",
     "name": "通义千问",
