@@ -30,10 +30,26 @@ jobs:
         run: |
           python scripts/fetch_updates.py
 
+      - name: Run cleanup script
+        run: |
+          python scripts/cleanup_updates.py
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build static site
+        run: npm run build
+
       - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add data/ai-tracker.db
+          git add data/updates.json data/products.json dist/
           git diff --staged --quiet || git commit -m "chore: daily AI updates sync [$(date -u +%Y-%m-%d)]"
           git push
